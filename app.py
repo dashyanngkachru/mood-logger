@@ -6,6 +6,7 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from streamlit_autorefresh import st_autorefresh
+import pytz
 
 # Constants
 COLOR_MAP = {
@@ -15,8 +16,10 @@ COLOR_MAP = {
     "😠": "darkred"
 }
 
-# Google Sheets Setup
+# Set timezone to Pacific Time
+PACIFIC = pytz.timezone("America/Los_Angeles")
 
+# Google Sheets Setup
 @st.cache_resource(show_spinner=False)
 def get_sheet():
     """Authenticate and return the Google Sheet object."""
@@ -48,7 +51,7 @@ def get_data(sheet):
 def log_mood(sheet, mood, note):
     """Append a new mood entry to the Google Sheet."""
     try:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(PACIFIC).strftime("%Y-%m-%d %H:%M:%S")
         sheet.append_row([now, mood, note])
         return True
     except Exception as e:
@@ -57,7 +60,6 @@ def log_mood(sheet, mood, note):
 
 
 # UI and Logic
-
 def handle_auto_refresh():
     """Setup auto refresh based on user selection."""
     with st.sidebar:
@@ -86,13 +88,14 @@ def filter_data_by_date(data):
 
     filtered = pd.DataFrame()
     try:
+        today_pacific = datetime.now(PACIFIC).date()
         if filter_type == "Single day":
-            selected_day = st.date_input("Select a date", value=datetime.now().date())
+            selected_day = st.date_input("Select a date", value=today_pacific)
             filtered = data[data['timestamp'].dt.date == selected_day]
         else:
             date_range = st.date_input(
                 "Select date range",
-                [datetime.now().date() - timedelta(days=7), datetime.now().date()]
+                [today_pacific - timedelta(days=7), today_pacific]
             )
             if len(date_range) == 2:
                 start_date, end_date = date_range
